@@ -2,6 +2,7 @@
 import vizact
 import vizinfo
 import vizcam
+import math
 
 # SETTINGS INICIALES #
 
@@ -47,14 +48,13 @@ nunchuck_disconnect_screen = viz.add("NUNCHUCK_DISCONNECTED.png")
 message_screen.texture(pause_screen)
 message_screen.visible(viz.OFF) #Cuando should_it_run sea False, viz.ON es el valor a usar.
 
-#Add wiimote extension
+# Agrega libreria de wiimote
 wii = viz.add('wiimote.dle')
-#Connect to first available wiimote
+# Conecta al primer wiimote disponible
 wiimote = wii.addWiimote()
-
-#Turn on LED 1
+# Prende el LED 1 del wiimote
 wiimote.led = wii.LED_1
-#Obtain nunchuck of wiimote
+# Obten el nunchuck del wiimote
 nunchuck_wiimote = wiimote.nunchuk 
 
 #Determines wheter the program should run or not.
@@ -69,7 +69,6 @@ else:
 	message_screen.texture(nunchuck_disconnect_screen)
 	message_screen.visible(viz.ON)
 	should_it_run = False
-
 
 viz.go()
 
@@ -169,20 +168,14 @@ def moveCamera():
 	if nunchuck_wiimote.state == 0 and should_it_run == True:
 		if(math.fabs(x) > 0.025):
 			viz.MainView.move([x*0.1,0,0],viz.BODY_ORI)
-			if (x > 0): #der
-				avatar.state(13)
-			elif (x < 0): #izq
-				avatar.state(12)
 		if(math.fabs(y) > 0.025):
 			viz.MainView.move([0,0,y*0.1],viz.BODY_ORI)
-			avatar.state(2)
 		else:
-			avatar.state(1)
+			pass
 	if nunchuck_wiimote.state == wii.NUNCHUK_C and should_it_run == True:
 		viz.MainView.setEuler([x,0,0],viz.BODY_ORI,viz.REL_PARENT)
 		if cam_y <= 30:
 			viz.MainView.setEuler([0,-y,0],viz.HEAD_ORI,viz.REL_PARENT)
-		avatar.state(9)
 
 vizact.ontimer(0,moveCamera)
 
