@@ -10,12 +10,19 @@ viz.setMultiSample(8) # FSAA de 8
 viz.fogcolor = viz.BLACK # Color de sombra = negro
 viz.fog(0.15) # Agrega sombra de tipo exponencial
 viz.collision(viz.ON) # Habilita colisiones en el mundo
+viz.phys.enable() # Habilita la fisica
+
+#Desabilita mouse
+viz.mouse.setOverride(viz.ON)
+
+#Mouse invisible
+viz.mouse.setVisible(viz.OFF)
 
 #Subventana que renderea viz.MainWindow
 mainSceneWindow = viz.addWindow()
 mainSceneWindow.setSize(0.7,1)
 mainSceneWindow.setPosition(0,1)
-mainSceneWindow.fov(viz.MainWindow.getVerticalFOV()) # Coloca el FOV de la ventana principal en la actual
+mainSceneWindow.fov(40, 1.3) # Coloca el FOV de la ventana principal en la actual con los valores de default (40 grados verticales, 1.3 aspect ratio)
 
 #Creando una ventana y un punto de vista para la camara
 cameraWindow = viz.addWindow(pos =[.7,1],size=(0.4,1)) #Creando la ventana
@@ -32,6 +39,37 @@ cam = ar.addWebCamera(window=cameraWindow) #Agregando una camara en la ventada n
 #Fullscreen no funciona en version trial
 #viz.window.setFullscreen(mode = viz.ON)
 #viz.go(viz.FULLSCREEN)
+
+# Configuracion de mensajes de la pantalla
+message_screen = viz.addTexQuad(parent=viz.SCREEN, pos=[0.5,0.5,1], scale=[12.80,10.24,1]) 
+pause_screen = viz.add("PAUSA.png")
+nunchuck_disconnect_screen = viz.add("NUNCHUCK_DISCONNECTED.png")
+message_screen.texture(pause_screen)
+message_screen.visible(viz.OFF) #Cuando should_it_run sea False, viz.ON es el valor a usar.
+
+#Add wiimote extension
+wii = viz.add('wiimote.dle')
+#Connect to first available wiimote
+wiimote = wii.addWiimote()
+
+#Turn on LED 1
+wiimote.led = wii.LED_1
+#Obtain nunchuck of wiimote
+nunchuck_wiimote = wiimote.nunchuk 
+
+#Determines wheter the program should run or not.
+#It will run if the Nunchuck is connected; otherwise, it won't.
+should_it_run = True
+
+#Ensures that the program won't run without the NUNCHUCK plug'd in.
+if(wiimote.getExtension() == wii.EXT_NUNCHUK):
+	should_it_run = True
+else:
+	print "Please plug-in the Wii NUNCHUCK."
+	message_screen.texture(nunchuck_disconnect_screen)
+	message_screen.visible(viz.ON)
+	should_it_run = False
+
 
 viz.go()
 
@@ -85,6 +123,122 @@ def arMarkerLoader():
 	mark = cam.addMatrixMarker(0, width=1000) #Creando la Marca
 	logo = viz.add("logo.ive",viz.WORLD, 2) #Creando el logo en la escena 2
 	viz.link(mark, logo) #Ligando la marca y el logo
+
+#Detects and ensures that the Wii NUNCHUCK is connected.
+def onConnect(e):
+	global should_it_run
+	print "The extension device has been connected."
+	if (e.extension == wii.EXT_NUNCHUK):
+		print "The Wii NUNCHUCK has been pluged in."
+		#Rumble wiimote for 0.5 seconds when nunchuk is connected
+		e.object.setRumble(True, 0.5)
+		should_it_run = True
+		message_screen.visible(viz.OFF)
+	else:
+		print "Please plug-in the Wii NUNCHUCK."
+		message_screen.texture(nunchuck_disconnect_screen)
+		message_screen.visible(viz.ON)
+		should_it_run = False
+viz.callback(wii.EXT_CONNECT_EVENT,onConnect)
+
+#Detects a disconect event and ensures that the NUNCHUCK is connected again.
+def onDisconnect(e):
+	global should_it_run
+	print "The extension device has been disconnected."
+	if (e.extension == wii.EXT_NUNCHUK):
+		print "Please plug-in the Wii NUNCHUCK again."
+		message_screen.texture(nunchuck_disconnect_screen)
+		message_screen.visible(viz.ON)
+		should_it_run = False
+	else:
+		print "Please plug-in the Wii NUNCHUCK."
+		message_screen.texture(nunchuck_disconnect_screen)
+		message_screen.visible(viz.ON)
+		should_it_run = False
+viz.callback(wii.EXT_DISCONNECT_EVENT,onDisconnect)
+
+#Rumble the wiimote while the B button is down
+vizact.onsensordown(wiimote,wii.BUTTON_B,wiimote.setRumble,True)
+vizact.onsensorup(wiimote,wii.BUTTON_B,wiimote.setRumble,False)
+
+def moveCamera():
+	global nunchuck_wiimote
+	x,y,z = nunchuck_wiimote.position
+	cam_x,cam_y,cam_z = viz.MainView.getEuler()
+	#nunchuck_wiimote.deadZone = (0.01031,0.01031)#Zona de 0,0 sin mover
+	if nunchuck_wiimote.state == 0 and should_it_run == True:
+		if(math.fabs(x) > 0.025):
+			viz.MainView.move([x*0.1,0,0],viz.BODY_ORI)
+			if (x > 0): #der
+				avatar.state(13)
+			elif (x < 0): #izq
+				avatar.state(12)
+		if(math.fabs(y) > 0.025):
+			viz.MainView.move([0,0,y*0.1],viz.BODY_ORI)
+			avatar.state(2)
+		else:
+			avatar.state(1)
+	if nunchuck_wiimote.state == wii.NUNCHUK_C and should_it_run == True:
+		viz.MainView.setEuler([x,0,0],viz.BODY_ORI,viz.REL_PARENT)
+		if cam_y <= 30:
+			viz.MainView.setEuler([0,-y,0],viz.HEAD_ORI,viz.REL_PARENT)
+		avatar.state(9)
+
+vizact.ontimer(0,moveCamera)
+
+def wiiButtonManager():
+	global nunchuck_wiimote
+	global should_it_run
+	global message_screen
+
+	if wiimote.state == wii.BUTTON_HOME and wiimote.getExtension() == wii.EXT_NUNCHUK: #Button HOME con NUNCHUCK conectado
+		message_screen.texture(pause_screen)
+		if should_it_run:
+			message_screen.visible(viz.ON)
+		else:
+			message_screen.visible(viz.OFF)
+		should_it_run = not should_it_run
+	elif should_it_run == True:
+		if nunchuck_wiimote.state == wii.NUNCHUK_C:
+			print "C"
+		if nunchuck_wiimote.state == wii.NUNCHUK_Z:
+			print "Z"
+		if wiimote.state == wii.BUTTON_UP:
+			print "UP"
+		if wiimote.state == wii.BUTTON_DOWN:
+			print "DOWN"
+		if wiimote.state == wii.BUTTON_LEFT:
+			print "LEFT"
+		if wiimote.state == wii.BUTTON_RIGHT:
+			print "RIGHT"
+		if wiimote.state == wii.BUTTON_A:
+			print "A"
+		if wiimote.state == wii.BUTTON_B:
+			print "B"
+		if wiimote.state == wii.BUTTON_PLUS:
+			print "+"
+		if wiimote.state == wii.BUTTON_MINUS:
+			print "-"
+		if wiimote.state == wii.BUTTON_HOME:
+			print "Home"
+		if wiimote.state == wii.BUTTON_1:
+			print "1"
+		if wiimote.state == wii.BUTTON_2:
+			print "2"
+
+vizact.onsensordown(wiimote, wii.BUTTON_HOME, wiiButtonManager)
+vizact.onsensordown(wiimote, wii.BUTTON_UP, wiiButtonManager)
+vizact.onsensordown(wiimote, wii.BUTTON_DOWN, wiiButtonManager)
+vizact.onsensordown(wiimote, wii.BUTTON_LEFT, wiiButtonManager)
+vizact.onsensordown(wiimote, wii.BUTTON_RIGHT, wiiButtonManager)
+vizact.onsensordown(wiimote, wii.BUTTON_A, wiiButtonManager)
+vizact.onsensordown(wiimote, wii.BUTTON_B, wiiButtonManager)
+vizact.onsensordown(wiimote, wii.BUTTON_PLUS, wiiButtonManager)
+vizact.onsensordown(wiimote, wii.BUTTON_MINUS, wiiButtonManager)
+vizact.onsensordown(wiimote, wii.BUTTON_1, wiiButtonManager)
+vizact.onsensordown(wiimote, wii.BUTTON_2, wiiButtonManager)
+vizact.onsensordown(wiimote, wii.NUNCHUK_C, wiiButtonManager)
+vizact.onsensordown(wiimote, wii.NUNCHUK_Z, wiiButtonManager)
 
 def main():
 	global loc_list
