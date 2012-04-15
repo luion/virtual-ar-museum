@@ -3,7 +3,39 @@ import vizact
 import vizinfo
 import vizcam
 
+# SETTINGS INICIALES #
+
+viz.MainWindow.visible(viz.OFF) #Hago invisible la main window
+viz.setMultiSample(8) # FSAA de 8
+viz.fogcolor = viz.BLACK # Color de sombra = negro
+viz.fog(0.15) # Agrega sombra de tipo exponencial
+viz.collision(viz.ON) # Habilita colisiones en el mundo
+
+#Subventana que renderea viz.MainWindow
+mainSceneWindow = viz.addWindow()
+mainSceneWindow.setSize(0.7,1)
+mainSceneWindow.setPosition(0,1)
+mainSceneWindow.fov(viz.MainWindow.getVerticalFOV()) # Coloca el FOV de la ventana principal en la actual
+
+#Creando una ventana y un punto de vista para la camara
+cameraWindow = viz.addWindow(pos =[.7,1],size=(0.4,1)) #Creando la ventana
+cameraWindowView = viz.addView() #Creando un viewpoint
+cameraWindowView.setScene(2) #Poniendo la nueva ventana en la escena 2
+cameraWindow.setView(cameraWindowView) #Ligando el viewpoint con la nueva ventana
+
+#Importar libreria de AR
+ar = viz.add('artoolkit.dle')
+
+#Vincular camara web a plugin de AR
+cam = ar.addWebCamera(window=cameraWindow) #Agregando una camara en la ventada nueva
+
+#Fullscreen no funciona en version trial
+#viz.window.setFullscreen(mode = viz.ON)
+#viz.go(viz.FULLSCREEN)
+
 viz.go()
+
+# FIN DE SETTINGS INICIALES #
 
 #IDEA = hotspots para hacer trigger al cambio en lugar de callbacks
 #IDEA = agregar recursos como musica y objetos a las locations con sus valores; objetos tienen sus propios atributos como musica, nombre, posicion inicial; desde el archivo
@@ -48,13 +80,19 @@ def initializer(loc_list):
 		print "Unexpected error: ", sys.exc_info()[0]
 		print "File couldn't be read."
 	
+def arMarkerLoader():
+	# Creando un logo en la escena 2 (AR)
+	mark = cam.addMatrixMarker(0, width=1000) #Creando la Marca
+	logo = viz.add("logo.ive",viz.WORLD, 2) #Creando el logo en la escena 2
+	viz.link(mark, logo) #Ligando la marca y el logo
+
 def main():
 	global loc_list
 	global active_location
 	loc_list = []
 	initializer(loc_list)
+	arMarkerLoader()
 	for item in loc_list:
-		print item.space_name
 		if item.space_name == "piazza.osgb":
 			active_location = item
 			item.addLocation()
@@ -69,25 +107,6 @@ def removeAdd(key):
 			item.addLocation()
 
 viz.callback(viz.KEYDOWN_EVENT, removeAdd)
-
-#Add a sub-window.
-subWindow = viz.addWindow()
-subWindow.setSize(0.7,1)
-#Position the sub-window.
-subWindow.setPosition(0,1)
-
-ar = viz.add('artoolkit.dle') #plugin AR
-#Creando una ventana y un punto de vista
-subWindow1 = viz.addWindow(pos =[.7,1],size=(0.4,1)) #Creando la ventana
-subView = viz.addView() #Creando un viewpoint
-subView.setScene(2) #Poniendo la nueva ventana en la escena 2
-subWindow1.setView(subView) #Ligando el viewpoint con la nueva ventana
-cam = ar.addWebCamera(window=subWindow1) #Agregando una camara en la ventada nueva
-#Creando un logo en la escena 2(AR)
-mark = cam.addMatrixMarker(0,width=1000) #Creando la Marca
-logo = viz.add("logo.ive",viz.WORLD, 2) #Creando el logo en la escena 2
-viz.link(mark,logo) #Ligando la marca y el logo
-
 
 if __name__ == '__main__':
 	main()
