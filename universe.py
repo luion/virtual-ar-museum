@@ -2,18 +2,18 @@
 import vizact
 import vizinfo
 import vizcam
-import vizfx
 
 viz.go()
 
 #IDEA = hotspots para hacer trigger al cambio en lugar de callbacks
-#IDEA = agregar recursos como musica y objetos a las locations con sus valores; desde el archivo
+#IDEA = agregar recursos como musica y objetos a las locations con sus valores; objetos tienen sus propios atributos como musica, nombre, posicion inicial; desde el archivo
 #IDEA = hacer una estructura de control para AR marks
 #IDEA = hacer una estructura de control para movimiento
 # HABILITAR Colisiones
 # Sonido en 3d
 # Baking de texturas
 # Luces y sombras
+# todo lo que se agrega en una localidad se debe retirar incluyendo objetos y musica antes de agregar el otro
 
 loc_list = []
 active_location = None
@@ -69,6 +69,25 @@ def removeAdd(key):
 			item.addLocation()
 
 viz.callback(viz.KEYDOWN_EVENT, removeAdd)
+
+#Add a sub-window.
+subWindow = viz.addWindow()
+subWindow.setSize(0.7,1)
+#Position the sub-window.
+subWindow.setPosition(0,1)
+
+ar = viz.add('artoolkit.dle') #plugin AR
+#Creando una ventana y un punto de vista
+subWindow1 = viz.addWindow(pos =[.7,1],size=(0.4,1)) #Creando la ventana
+subView = viz.addView() #Creando un viewpoint
+subView.setScene(2) #Poniendo la nueva ventana en la escena 2
+subWindow1.setView(subView) #Ligando el viewpoint con la nueva ventana
+cam = ar.addWebCamera(window=subWindow1) #Agregando una camara en la ventada nueva
+#Creando un logo en la escena 2(AR)
+mark = cam.addMatrixMarker(0,width=1000) #Creando la Marca
+logo = viz.add("logo.ive",viz.WORLD, 2) #Creando el logo en la escena 2
+viz.link(mark,logo) #Ligando la marca y el logo
+
 
 if __name__ == '__main__':
 	main()
